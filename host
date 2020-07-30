@@ -1,0 +1,28 @@
+##Create Fabric Based on manual fabric port assignement
+[spine:children]
+spine1
+
+[spine:vars]
+ip_fab_start=1.0.0.1/32
+as_start=65001
+fabric_iface=["swp1","swp2","swp3","swp4"]
+
+[spine1]
+192.168.0.81 ansible_ssh_user=cumulus ansible_ssh_pass=CumulusLinux! ansible_sudo_pass=CumulusLinux! hostname=PSI-SPINE 
+
+[leaf:children]
+leaf1
+leaf2
+
+[leaf:vars]
+ip_fab_start=10.0.0.1/32
+as_start=65201
+fabric_iface=["swp1"]
+ipl_iface=["swp2","swp3"]
+
+##MPID = MLAG PAIR ID, flag MLAG Pair
+[leaf1]
+192.168.0.82 ansible_ssh_user=cumulus ansible_ssh_pass=CumulusLinux! ansible_sudo_pass=CumulusLinux! hostname=PSI-LEAF01 MPID=1
+
+[leaf2]
+192.168.0.83 ansible_ssh_user=cumulus ansible_ssh_pass=CumulusLinux! ansible_sudo_pass=CumulusLinux! hostname=PSI-LEAF02 MPID=1

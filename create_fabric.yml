@@ -1,0 +1,172 @@
+- hosts: spine 
+  become: true
+  tasks:
+    - name: Enable Zebra and BGP in FRR
+      lineinfile:
+        dest: /etc/frr/daemons
+        create: yes
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      with_items:
+        - { regexp: '^zebra=', line: 'zebra=yes' }
+        - { regexp: '^bgpd=', line: 'bgpd=yes' }
+      register: non_nclu_task  
+    
+    - name: Modify hostname to {{ hostname }} and commit the change
+      nclu:
+        commands:
+          - add hostname {{ hostname }}
+        commit: true
+        
+    - name: Add and Configure Fabric Interface
+      nclu:
+        template: |
+          {% set isl_loop=isl.split(',') %}
+          {% for iface in isl_loop %}
+          add interface {{ iface }} ipv6 nd ra-interval 10
+          del interface {{ iface }} ipv6 nd suppress-ra
+          add interface {{ iface }} mtu 9216
+          {% endfor %}
+        commit: true
+      
+    - name: Configure BGP AS and add Leaf EBGP neighbors using BGP Unnumbered
+      nclu:
+        template: |
+          {% set net_loop=net_used.split(',') %}
+          {% set i=10 %}
+          {% for net in net_loop %}
+          add routing prefix-list ipv4 fabric-in seq {{ i }} permit {{ net }}/24 le 32
+          {% set i=i+1 %}
+          {% endfor %}
+          add loopback lo ip address {{ rid }}/32
+          add bgp autonomous-system {{ as }}
+          add bgp router-id {{ rid }}
+          add bgp bestpath as-path multipath-relax
+          add bgp neighbor fabric peer-group
+          add bgp neighbor fabric remote-as external
+          add bgp neighbor fabric capability extended-nexthop
+          {% set isl_loop=isl.split(',') %}
+          {% for iface in isl_loop %}
+          add bgp neighbor {{ iface }} interface peer-group fabric
+          {% endfor %}
+          add bgp ipv4 unicast neighbor fabric prefix-list fabric-in in
+          add bgp ipv4 unicast redistribute connected
+          add bgp l2vpn evpn neighbor fabric activate
+          add bgp l2vpn evpn advertise-all-vni     
+        atomic: true
+    
+    - name: Fetch Status Of BGP
+      nclu:
+        commands:
+          - show bgp summary
+      register: output
+
+    - name: Print BGP Status
+      debug:
+        var: output
+    
+    - name: reload FRR
+      service: name=frr state=restarted
+      when: non_nclu_task is changed
+      
+    - name: reload switchd
+      service: name=switchd state=restarted
+      when: non_nclu_task is changed  
+
+- hosts: leaf 
+  become: true
+  tasks:
+    - name: Enable Zebra and BGP in FRR
+      lineinfile:
+        dest: /etc/frr/daemons
+        create: yes
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      with_items:
+        - { regexp: '^zebra=', line: 'zebra=yes' }
+        - { regexp: '^bgpd=', line: 'bgpd=yes' }
+      register: non_nclu_task  
+    
+    - name: Modify hostname to {{ hostname }} and commit the change
+      nclu:
+        commands:
+          - add hostname {{ hostname }}
+        commit: true
+        
+    - name: Add and Configure Fabric Interface
+      nclu:
+        template: |
+          {% set isl_loop=isl.split(',') %}
+          {% for iface in isl_loop %}
+          add interface {{ iface }} ipv6 nd ra-interval 10
+          del interface {{ iface }} ipv6 nd suppress-ra
+          add interface {{ iface }} mtu 9216
+          {% endfor %}
+        commit: true
+      
+    - name: Configure BGP AS and add Leaf EBGP neighbors using BGP Unnumbered
+      nclu:
+        template: |
+          {% set net_loop=net_used.split(',') %}
+          {% set i=10 %}
+          {% for net in net_loop %}
+          add routing prefix-list ipv4 fabric-in seq {{ i }} permit {{ net }}/24 le 32
+          {% set i=i+1 %}
+          {% endfor %}
+          add loopback lo ip address {{ rid }}/32
+          add bgp autonomous-system {{ as }}
+          add bgp router-id {{ rid }}
+          add bgp bestpath as-path multipath-relax
+          add bgp neighbor fabric peer-group
+          add bgp neighbor fabric remote-as external
+          add bgp neighbor fabric capability extended-nexthop
+          {% set isl_loop=isl.split(',') %}
+          {% for iface in isl_loop %}
+          add bgp neighbor {{ iface }} interface peer-group fabric
+          {% endfor %}
+          add bgp ipv4 unicast neighbor fabric prefix-list fabric-in in
+          add bgp ipv4 unicast redistribute connected
+          add bgp l2vpn evpn neighbor fabric activate
+          add bgp l2vpn evpn advertise-all-vni     
+        commit: true
+    
+    - name: Configure CLAG
+      nclu:
+        template: |
+          {% if mid is defined and mid|length>0 %}
+            {% set ipl_loop=ipl.split(',') %}
+            {% for iface in ipl_loop %}
+            add bond peerlink bond slaves {{ iface }}
+            {% endfor %}
+            add interface peerlink.4094 clag backup-ip {{ pair_ip }}
+            {% set mid_id = mid.split('-')[0] | int %}
+            {% if mid_id is even %}
+            add interface peerlink.4094 clag peer-ip 169.254.1.1
+            add interface peerlink.4094 ip address 169.254.1.2/30
+            {% else %}
+            add interface peerlink.4094 clag peer-ip 169.254.1.2
+            add interface peerlink.4094 ip address 169.254.1.1/30
+            {% endif %}
+            {% if mid.split('-')[1] == 'm' %}
+            add interface peerlink.4094 clag priority 1000
+            {% elif mid.split('-')[1] == 'b' %}
+            add interface peerlink.4094 clag priority 1100
+            {% else %}
+            {% endif %}
+            add interface peerlink.4094 clag sys-mac 44:38:39:FF:FF:01
+          {% endif %}
+        atomic: true
+    
+    - name: reload FRR
+      service: name=frr state=restarted
+      when: non_nclu_task is changed
+      
+    - name: reload switchd
+      service: name=switchd state=restarted
+      when: non_nclu_task is changed  
+
+    #add interface {{ iface }}
+    #- name: Debugging
+    #  debug:
+    #    msg: "Out: {{ isl_loop }}"
+          
