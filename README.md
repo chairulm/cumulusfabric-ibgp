@@ -1,9 +1,26 @@
+
 # cumulusfabric-ibgp
 1 spine 2 leaf 1 border demo ibgp fabric
 
               [spine]
 
 [leaf-1] [leaf-2]  [border-1]
+
+Requirement
+===========
+1. Ansible
+2. Python
+  - pip install ansible
+
+Quick Start
+===========
+1. Define the switch host and reachable mgmt ip in host
+2. Define the fabric parameter in validate_fabric.py
+3. Play the playbook
+
+Quick Guide
+===========
+1. Output file will created in cfg/ directory relatively
 
 validate_fabric.py
 ==================
