@@ -1,0 +1,8 @@
+---
+- hosts: leaf3
+  become: yes
+  vars:
+    iface: swp1
+    ip: 172.0.0.2/30
+  roles:
+    - l3_service

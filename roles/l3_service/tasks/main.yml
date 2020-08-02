@@ -1,0 +1,5 @@
+- name: Configure L3 Connection to External OOB
+  nclu:
+    template: |
+      
+    commit: true

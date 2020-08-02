@@ -1,0 +1,15 @@
+- name: Configure EVPN Service
+  nclu:
+    template: |
+      add vxlan vni{{ vni_suff }}{{ vlan }} vxlan id {{ vni_suff }}{{ vlan }}
+      add vxlan vni{{ vni_suff }}{{ vlan }} bridge access {{ vlan }}
+      add vxlan vni{{ vni_suff }}{{ vlan }} vxlan local-tunnelip {{ loopback }}
+      {% set iface_loop=iface.split(',') %}
+      {% for if in iface_loop %}
+      {% if type=='trunk'%}
+      add interface {{ if }} bridge trunk vlans {{ vlan }}
+      {% elif type=='access' %}
+      add interface {{ if }} bridge access {{ vlan }}
+      {% endif %}
+      {%- endfor %}
+    commit: true

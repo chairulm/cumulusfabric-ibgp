@@ -32,4 +32,4 @@ leaf3
 10.0.20.12 hostname=leaf2 gateway=10.0.20.1 loopback=1.2.0.2 ansible_ssh_user=cumulus ansible_ssh_pass=CumulusLinux! ansible_sudo_pass=CumulusLinux!
 
 [leaf3]
-10.0.20.13 hostname=leaf2 gateway=10.0.20.1 loopback=1.2.0.3 ansible_ssh_user=cumulus ansible_ssh_pass=CumulusLinux! ansible_sudo_pass=CumulusLinux!
+10.0.20.13 hostname=leaf3 gateway=10.0.20.1 loopback=1.2.0.3 ansible_ssh_user=cumulus ansible_ssh_pass=CumulusLinux! ansible_sudo_pass=CumulusLinux!

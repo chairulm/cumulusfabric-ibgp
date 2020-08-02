@@ -1,0 +1,20 @@
+---
+- hosts: leaf1
+  become: yes
+  vars:
+    vlan: 100
+    iface: swp3
+    type: access
+    vni_suff: 1
+  roles:
+    - evpn_openstack_service
+    
+- hosts: leaf3
+  become: yes
+  vars:
+    vlan: 100
+    iface: swp3
+    type: access
+    vni_suff: 1
+  roles:
+    - evpn_openstack_service
