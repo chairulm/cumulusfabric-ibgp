@@ -1,0 +1,136 @@
+- name: Clearing all previous config
+  nclu:
+    commands:
+      - del all
+    commit: true
+
+- name: Enable Zebra and BGP in FRR
+  lineinfile:
+    dest: /etc/frr/daemons
+    create: yes
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  with_items:
+    - { regexp: '^zebra=', line: 'zebra=yes' }
+    - { regexp: '^bgpd=', line: 'bgpd=yes' }
+    - { regexp: '^ospfd=', line: 'bgpd=yes' }
+  register: non_nclu_task  
+
+- name: Modify hostname to {{ hostname }} and commit the change
+  nclu:
+    commands:
+      - add hostname {{ hostname }}
+
+- name: Configure Sudo SSH
+  lineinfile:
+    dest: /etc/sudoers.d/sudoneo
+    create: yes
+    regexp: 'cumulus'
+    line: cumulus ALL=(ALL) NOPASSWD:ALL
+    
+- name: Configure LLDP Readme
+  lineinfile:
+    dest: /etc/lldpd.d/README.conf
+    create: yes
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  with_items:
+    - { regexp: '^configure system ip', line: 'configure system ip management pattern {{ inventory_hostname }}' }
+    - { regexp: '^configure system interface=', line: 'configure system interface pattern-blacklist eth0' }
+  register: non_nclu_task  
+
+- name: Configure LLDP File
+  lineinfile:
+    dest: /etc/default/lldpd
+    create: yes
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  with_items:
+    - { regexp: '^DAEMON_ARGS=', line: 'DAEMON_ARGS="-c -M 4 -x"' }
+  register: non_nclu_task  
+  
+- name: reload LLDP
+  service: name=lldpd state=restarted
+  when: non_nclu_task is changed
+    
+- name: Configure SNMP Setting
+  nclu:
+    template: |
+      del snmp-server all
+      add snmp-server readonly-community {{ snmp_comstring }} access any
+      add snmp-server listening-address {{ inventory_hostname }}
+    commit: true
+
+- name: Add and Configure Fabric Interface
+  nclu:
+    template: |
+      {% set isl_loop=isl.split(',') %}
+      {% for iface in isl_loop %}
+      
+      add interface {{ iface }} mtu {{ fabric_mtu }}
+      {%- endfor %}
+
+- name: Configure OSPF
+  nclu:
+    template: |
+      add loopback lo ip address {{ loopback }}/32
+      add ospf router-id {{ loopback }}
+      add loopback lo ospf area 0.0.0.0
+      {% set isl_loop=isl.split(',') %}
+      {% for iface in isl_loop %}
+      
+      add interface {{ iface }} ip address {{ loopback }}/32
+      add interface {{ iface }} ospf area 0.0.0.0
+      add interface {{ iface }} ospf network point-to-point
+      add interface {{ iface }} ospf bfd 4 400 400
+      {%- endfor %}
+    commit: true
+    
+- name: Configure Spine iBGP Fabric
+  nclu:
+    template: |
+      add bgp autonomous-system {{ as_number }}
+      add bgp router-id {{ loopback }}      
+      add bgp neighbor fabric-client peer-group
+      add bgp neighbor fabric-client peer-group
+      add bgp neighbor fabric-client remote-as internal
+      add bgp neighbor fabric-client capability extended-nexthop
+      add bgp neighbor fabric-client bfd 4 400 400
+      add bgp neighbor fabric-client next-hop-self      
+      add bgp neighbor fabric-rr peer-group
+      add bgp neighbor fabric-rr remote-as internal
+      add bgp neighbor fabric-rr capability extended-nexthop
+      add bgp neighbor fabric-rr bfd 4 400 400
+      add bgp neighbor fabric-rr next-hop-self
+      {% set leaf_loop=leaf_client.split(',') %}
+      {% for client in leaf_loop %}
+      
+      add bgp neighbor {{ client }} peer-group fabric-client
+      {% endfor %}
+      {% set spine_loop=spine_rr.split(',') %}
+      {% for rr in spine_loop %}
+      {% if rr != loopback %}
+      
+      add bgp neighbor {{ rr }} peer-group fabric-rr
+      {% endif %}
+      {% endfor %}
+    
+    
+- name: Enable EVPN Fabric
+  nclu:
+    template: |
+      add bgp ipv4 unicast redistribute connected
+      add bgp l2vpn evpn  neighbor fabric-rr activate
+      add bgp l2vpn evpn  neighbor fabric-client activate
+      add bgp l2vpn evpn advertise-all-vni
+    commit: true
+    
+- name: Set Spine as RR
+  nclu:
+    commands:
+      - add bgp ipv4 unicast neighbor fabric-client route-reflector-client
+      - add bgp evpn neighbor fabric-client route-reflector-client
+    commit: true
+    
+###Later Completed
+#add interface {{ iface }} storage-optimized pfc

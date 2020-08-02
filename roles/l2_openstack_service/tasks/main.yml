@@ -1,0 +1,14 @@
+- name: Configure VLAN and Bridge
+  nclu:
+    template: |
+      {% set trunk_loop=trunk.split(',') %}
+      {% for iface in trunk_loop %}
+      
+      add interface {{ iface }} bridge trunk vlans {{ vlan }}
+      {%- endfor %}
+      {% set access_loop=access.split(',') %}
+      {% for iface in access_loop %}
+      
+      add interface {{ iface }} bridge access {{ vlan }}
+      {%- endfor %}
+    commit: true

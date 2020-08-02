@@ -1,0 +1,11 @@
+---
+- hosts: leaf
+  become: yes
+  roles:
+    - leaf_initialize
+    
+- hosts: spine
+  become: yes
+  roles:
+    - spine_initialize
+    
