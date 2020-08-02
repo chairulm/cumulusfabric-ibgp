@@ -1,0 +1,18 @@
+---
+- hosts: leaf1
+  become: yes
+  vars:
+    vlan: 100
+    trunk: swp1
+    access: swp3
+  roles:
+    - l2_openstack_service
+    
+- hosts: leaf3
+  become: yes
+  vars:
+    vlan: 100
+    trunk: swp1
+    access: swp3
+  roles:
+    - l2_openstack_service

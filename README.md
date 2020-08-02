@@ -4,34 +4,33 @@
 
               [spine]
 
-[leaf-1] [leaf-2]  [border-1]
+
+[leaf-1]    [leaf-2]      [border-1]
 
 Requirement
 ===========
 1. Ansible
-2. Python
-  - pip install ansible
 
 Quick Start
 ===========
-1. Define the switch host and reachable mgmt ip in host
+Download cumulus-vx
+-------------------
+1. Build the topology accordingly
+
+Clone this directory
+-------------------
+1. git clone [git_url]
+
+Running the playbook
+-------------------
+1. Define the switch host and mgmt ip in host
 2. Define the fabric parameter in validate_fabric.py
-3. Play the playbook
-
-Quick Guide
-===========
-1. Output file will created in cfg/ directory relatively
-
-validate_fabric.py
-==================
-Start from here, this file will create the neccessary switch configuration file and host file as well
-
-Create the initial configuration file, also validate existing config for multiple or single switch
-
-Specify parameter on fabric_params.cfg
-
-add_service.py
-==================
-Adding L2 Service to specific switch-port
+3. Make sure you can reach all switch via OOB/Mgmt/eth0
+4. Make sure you can ansible ping all host
+  - ansible -i host -m ping all
+  - 
+5. Play the cumulusfabric-ibgp.yml playbook to initialize the fabric
+  - basically the playbook will : clear config, configure hostname,interface,snmp,lldp,ospf,ibgp and evpn
+6. Play additional code for additional service
 
 
